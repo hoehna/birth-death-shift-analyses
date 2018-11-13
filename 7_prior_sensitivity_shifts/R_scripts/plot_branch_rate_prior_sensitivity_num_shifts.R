@@ -1,0 +1,97 @@
+library(viridis)
+
+colors = viridis(5, begin=0.3, end=0.9)
+
+##################################################################
+# plot the estimated number of events as a function of the prior #
+# for a given number of rate categories                          #
+##################################################################
+
+# the settings
+DATASET             = c("primates")
+NUM_RATE_CATEGORIES = 10
+EXPECTED_NUM_EVENTS = c(1, 10, 100)
+EXPECTED_NUM_EVENTS = c(1, 5, 10, 20, 50, 100)
+
+# read the posterior distributions
+branch_lambdas = vector("list", length(EXPECTED_NUM_EVENTS))
+for(i in 1:length(EXPECTED_NUM_EVENTS)) {
+
+  E = EXPECTED_NUM_EVENTS[i]
+
+  cat(E,"\t")
+
+  file = paste0("output/",DATASET,"_FRCBD_rates_num_cats_",NUM_RATE_CATEGORIES,"_num_events_",E,".log")
+  samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
+
+  # discard some burnin (25%)
+  burnin = 0.25
+  n_samples = nrow(samples)
+  # combine the mcmc output
+  lambda_output   = samples[-c(1:ceiling(n_samples * burnin)),grepl("avg_lambda", colnames(samples))]
+
+  # store the parameters
+  lambda_mean = colMeans(lambda_output)
+
+  branch_lambdas[[i]] = lambda_mean[-length(lambda_mean)]
+
+  cat("\n")
+
+}
+
+
+# make the plot
+layout_mat = matrix(1:(length(EXPECTED_NUM_EVENTS)-1), nrow=1)
+#layout_mat = matrix(1:2, nrow=1)
+range      = range(pretty(unlist(branch_lambdas)))
+
+#pch = 19
+pch = 4
+cex = 0.5
+#cex = 1.0
+f   = 1.5
+col = colors[2]
+m   = 4
+
+
+#pdf(paste0("../figures/branch_rate_sensitivity_num_shifts_",DATASET,"_sequence.pdf"), height=3.5, width=7.5)
+pdf(paste0("../figures/branch_rate_sensitivity_num_shifts_",DATASET,"_sequence.pdf"), height=2.75, width=2.4 * (length(EXPECTED_NUM_EVENTS)-1))
+
+layout(layout_mat)
+
+# par(mar=c(4,4,0.2,0.1))
+
+#par(mar=c(0,0,0,m), oma=c(m,m,0.2,0))
+par(mar=c(0,0,0,m), oma=c(m,m,m,0))
+
+for(i in 1:(length(EXPECTED_NUM_EVENTS)-1)) {
+
+  plot(branch_lambdas[[i+1]], branch_lambdas[[i]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
+  abline(a=0, b=1, lty=2)
+  axis(1, lwd.tick=1, lwd=0)
+  mtext(side=2, text=paste0("E(S) = ",EXPECTED_NUM_EVENTS[i]),    line=1.2)
+  mtext(side=3, text=paste0("E(S) = ",EXPECTED_NUM_EVENTS[i+1]),  line=1.2)
+  mtext(side=1, text="branch-specific speciation rate", line=2.5, cex=0.7)
+
+}
+
+#plot(branch_lambdas[[1]], branch_lambdas[[2]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
+#abline(a=0, b=1, lty=2)
+#axis(1, lwd.tick=1, lwd=0)
+#mtext(side=2, text="E(S) = 10", line=1.2)
+#mtext(side=1, text="E(S) = 1",  line=2.5)
+
+#plot(branch_lambdas[[2]], branch_lambdas[[3]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
+#abline(a=0, b=1, lty=2)
+#axis(1, lwd.tick=1, lwd=0)
+#axis(4, lwd.tick=1, lwd=0, las=1)
+#mtext(side=2, text="E(S) = 100", line=1.2)
+#mtext(side=1, text="E(S) = 10",  line=2.5)
+
+
+axis(4, lwd.tick=1, lwd=0)
+mtext(side=4, text="branch-specific speciation rate",  line=2.5, cex=0.7)
+
+
+dev.off()
+

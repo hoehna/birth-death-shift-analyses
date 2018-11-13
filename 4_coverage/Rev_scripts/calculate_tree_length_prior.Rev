@@ -1,0 +1,57 @@
+################################################################################
+#
+# Calculate expected tree length for branch-heterogenous birth death process 
+# conditional on 200 tips.
+#
+# authors: Will Freyman
+#
+################################################################################
+
+
+
+condition = "numTips"
+exact_num_tips = 200
+rate_categories = 4
+H = 0.587405
+
+
+lambda_mean_mean <- 2 * ln(exact_num_tips/2.0) / 4.0
+lambda_mean ~ dnLognormal(ln(lambda_mean_mean), H)
+expected_lambda_sd <- H
+lambda_sd ~ dnExponential(1 / expected_lambda_sd)
+lambda := fnDiscretizeDistribution( dnLognormal(ln(lambda_mean), lambda_sd), rate_categories )
+
+relative_mu ~ dnBeta(1,1)
+mu_mean := relative_mu * lambda_mean
+mu := rep(mu_mean, rate_categories)
+
+mean_event_rt = 0.1
+#mean_event_rt = 0.1086255
+event_rt ~ dnLognormal( ln( mean_event_rt ), H)
+sse ~ dnCDBDP(rootAge              = 5.0,
+              speciationRates      = lambda,
+              extinctionRates      = mu, 
+              Q                    = fnJC(rate_categories),
+              delta                = event_rt, 
+              pi                   = simplex(rep(1, rate_categories)),
+              simulateCondition    = condition,
+              exactNumLineages     = exact_num_tips,
+              pruneExtinctLineages = FALSE)
+
+
+
+for (i in 1:1000000) {
+    l[i] <- sse.treeLength()
+    a[i] <- sse.rootAge()
+    lambda_mean.redraw()
+    relative_mu.redraw()
+    event_rt.redraw()
+    sse.redraw()
+}
+
+print("mean tree length = " + mean(l))
+print("mean tree age = " + mean(a))
+print("expected num events = " + mean(l) * mean_event_rt)
+
+#q()
+

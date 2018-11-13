@@ -1,0 +1,128 @@
+################################################################################
+#
+# Simulating a tree under perseus conditional on having 200 surviving tips.
+# Then perform MCMC on the simulated tree and calculate the posterior relative
+# error in the branch-specific net diversification rate estimate. 
+#
+# authors: Will Freyman
+#
+################################################################################
+
+
+
+#rep = 5
+seed(rep)
+condition = "numTips"
+exact_num_tips = 200
+rate_categories = 4
+expected_num_events = 2
+H = 0.587405
+output_dir = "simulated_data_prior/"
+
+
+
+# simulate dataset
+lambda_mean_mean <- 2 * ln(exact_num_tips/2.0) / 4.0
+lambda_mean ~ dnLognormal(ln(lambda_mean_mean), H)
+expected_lambda_sd <- H
+lambda_sd ~ dnExponential(1 / expected_lambda_sd)
+lambda := fnDiscretizeDistribution( dnLognormal(ln(lambda_mean), lambda_sd), rate_categories )
+
+relative_mu ~ dnBeta(1,1)
+mu_mean := relative_mu * lambda_mean
+mu := rep(mu_mean, rate_categories)
+
+event_rt ~ dnLognormal( ln( 0.1 ), H)
+sse ~ dnCDBDP(rootAge           = 4.0,
+              speciationRates   = lambda,
+              extinctionRates   = mu, 
+              Q                 = fnJC(rate_categories),
+              delta             = event_rt, 
+              pi                = simplex(rep(1, rate_categories)),
+              simulateCondition = condition,
+              exactNumLineages  = exact_num_tips)
+
+# write simulated tree/tip states
+#tip_states = sse.getCharData()
+#output_f = output_dir + "/" + rep
+#write(sse, filename=output_f + ".tree")
+#writeCharacterDataDelimited(tip_states, filename=output_f + ".tsv", delimiter="\t")
+
+# write true net diversification rates
+true_rates <- sse.averageSpeciationRate() - sse.averageExtinctionRate()
+#write(rep, true_rates, "\n", 
+#      filename=output_dir + "true_div_rates.csv", 
+#      separator=",", 
+#      append=TRUE)
+
+
+
+# run MCMC over the simulated dataset
+mvi = 0
+mni = 0
+
+# get info from the simulated tree
+root_age <- sse.rootAge()
+
+# diversification rates
+speciation_mean_mean <- 2 * ln(exact_num_tips/2.0) / 4.0
+speciation_mean ~ dnLognormal(ln(speciation_mean_mean), H)
+moves[++mvi] = mvScale(speciation_mean,lambda=1,tune=true,weight=10)
+expected_speciation_sd <- H
+speciation_sd ~ dnExponential(1 / expected_speciation_sd)
+moves[++mvi] = mvScale(speciation_sd, lambda=1.0, tune=true, weight=10.0)
+speciation := fnDiscretizeDistribution(dnLognormal(ln(speciation_mean), speciation_sd), rate_categories)
+
+relative_extinction ~ dnBeta(1,1)
+moves[++mvi] = mvBetaProbability(relative_extinction, delta=10.0, weight=10.0)
+extinction_mean := relative_extinction * speciation_mean
+extinction := rep(extinction_mean, rate_categories)
+
+# root categories
+rate_cat_probs <- simplex( rep(1, rate_categories) )
+
+# event rate
+event_rate ~ dnLognormal( ln( 0.1 ), H)
+event_rate.setValue( 0.1 )
+moves[++mvi] = mvScale(event_rate,lambda=1,tune=true,weight=5)
+
+# the final character-dependent birth-death process
+timetree ~ dnCDBDP(rootAge           = root_age,
+                   speciationRates   = speciation,
+                   extinctionRates   = extinction, 
+                   Q                 = fnJC(rate_categories),
+                   delta             = event_rate, 
+                   pi                = simplex(rep(1, rate_categories)))
+
+# clamp the model with the "observed" tree
+timetree.clamp(sse)
+
+# sample stochastic character maps and get branch-specific rates
+moves[++mvi] = mvGibbsDrawCharacterHistory(timetree, weight=1)
+est_rates := timetree.averageSpeciationRate() - timetree.averageExtinctionRate()
+
+# calculate relative error for each branch rate estimate
+for (i in 1:true_rates.size()) {
+    if (true_rates[i] == 0.0) {
+        relative_error[i] := 0.0
+    } else {
+        relative_error[i] := (est_rates[i] - true_rates[i]) / true_rates[i]
+    }
+}
+
+# finally run the MCMC
+mymodel = model(timetree)
+
+monitors[++mni] = mnModel(filename="output_prior/" + rep + ".log", printgen=1)
+monitors[++mni] = mnScreen(printgen=100, event_rate, speciation_mean)
+monitors[++mni] = mnExtNewick(filename="output_prior/" + rep + ".trees", isNodeParameter=FALSE, printgen=1, tree=timetree, true_rates, est_rates, relative_error)
+
+mymcmc = mcmc(mymodel, monitors, moves)
+#mymcmc.burnin(generations=50, tuningInterval=10)
+mymcmc.run(generations=5000, tuningInterval=200)
+
+# summarize rates on the tree
+treetrace = readTreeTrace("output_prior/" + rep + ".trees", treetype="clock")
+map_tree = mapTree(treetrace,"output_prior/" + rep + "_MAP.tree")
+    
+q()

@@ -1,0 +1,7 @@
+history.txt
+*.swp
+simulated_data_prior/
+output_prior/
+output_coverage_tmp/
+src
+results

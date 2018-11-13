@@ -1,0 +1,6 @@
+history.txt
+jobs.txt
+*.pdf
+scripts_tmp/
+output/
+runtime/
