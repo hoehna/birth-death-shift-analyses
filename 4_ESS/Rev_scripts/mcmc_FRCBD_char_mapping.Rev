@@ -40,37 +40,18 @@ rho <- observed_phylogeny.ntips() / NUM_TOTAL_SPECIES
 
 ### Specify a prior on the speciation and extinction rates
 rate_mean <- (NUM_TOTAL_SPECIES-2) / tree_length
-#rate_sd   <- H
-
-rate_sd ~ dnExponential( 1.0 / H )
-moves[++mvi] = mvScale(rate_sd, lambda=1, tune=true, weight=2.0)
-
-### Create a lognormal distributed variable for the mean speciation rate
-#speciation_mean ~ dnLognormal( ln(rate_mean), rate_sd)
-speciation_mean ~ dnLoguniform( 1E-6, 1E2)
-speciation_mean.setValue( rate_mean )
-moves[++mvi] = mvScale(speciation_mean, lambda=1, tune=true, weight=2.0)
-
-### Create a lognormal distributed variable for the mean extinction rate
-#extinction_mean ~ dnLognormal( ln(rate_mean/2.0), rate_sd)
-extinction_mean ~ dnLoguniform( 1E-6, 1E2)
-extinction_mean.setValue( rate_mean / 2.0 )
-moves[++mvi] = mvScale(extinction_mean, lambda=1, tune=true, weight=2.0)
+rate_sd   <- H
 
 ### Create a deterministic variable for the speciation rate categories
 ### using a discretized lognormal distribution (the N-quantiles of it)
-speciation := fnDiscretizeDistribution( dnLognormal(ln(speciation_mean), rate_sd), NUM_RATE_CATEGORIES )
+speciation := fnDiscretizeDistribution( dnLognormal(ln(rate_mean), rate_sd), NUM_RATE_CATEGORIES )
 
-### Create a deterministic variable for the speciation rate categories
-### Assume that all extinction rates are equal
+### Set all the extinction rates to 0.0
+extinction_mean <- rate_mean / 2.0
 extinction := rep(extinction_mean, NUM_RATE_CATEGORIES)
 
 ### Create a exponential distributed variable for the rate of rate-shift events
-#event_rate <- EXPECTED_NUM_EVENTS/tree_length
-event_rate ~ dnUniform(0.0, 100.0/tree_length)
-event_rate.setValue(EXPECTED_NUM_EVENTS/tree_length)
-moves[++mvi] = mvScale(event_rate, lambda=1, tune=true, weight=2.0)
-
+event_rate <- EXPECTED_NUM_EVENTS/tree_length
 
 ### Create a uniformly distributed variable for the category at the root
 rate_cat_probs <- simplex( rep(1, NUM_RATE_CATEGORIES) )
@@ -89,6 +70,9 @@ timetree ~ dnCDBDP( rootAge           = root,
 timetree.clamp(observed_phylogeny)
 
 
+moves = VectorMoves()
+
+
 #############
 # The Model #
 #############
@@ -97,9 +81,8 @@ timetree.clamp(observed_phylogeny)
 mymodel = model(speciation)
 
 ### set up the monitors that will output parameter values to file and screen
-monitors[++mni] = mnScreen(printgen=1000, event_rate, speciation_mean)
-#monitors[++mni] = mnStochasticBranchRate(cdbdp=timetree, printgen=1, filename="output/" + DATASET + "_FRCBD_rates_num_cats_" + NUM_RATE_CATEGORIES + "_num_events_" + EXPECTED_NUM_EVENTS + ".log")
-monitors[++mni] = mnFile(speciation_mean, extinction_mean, rate_sd, event_rate, filename="output/" + DATASET + "_FRCBD_stoch_char_map_" + NUM_RATE_CATEGORIES + "_num_events_" + EXPECTED_NUM_EVENTS + ".log",printgen=1, separator = TAB)
+monitors[++mni] = mnScreen(printgen=10, event_rate, extinction_mean)
+monitors[++mni] = mnStochasticBranchRate(cdbdp=timetree, printgen=1, filename="output/" + DATASET + "_FRCBD_stoch_char_map_" + NUM_RATE_CATEGORIES + "_" + EXPECTED_NUM_EVENTS + ".log")
 
 
 ################
@@ -107,10 +90,10 @@ monitors[++mni] = mnFile(speciation_mean, extinction_mean, rate_sd, event_rate, 
 ################
 
 ### workspace mcmc
-mymcmc = mcmc(mymodel, monitors, moves, nruns=20, combine="mixed")
+mymcmc = mcmc(mymodel, monitors, moves, nruns=4, combine="mixed")
 
 ### run the MCMC
-mymcmc.run(generations=25000, tuningInterval=200)
+mymcmc.run(generations=50000, tuningInterval=500)
 
 ## quit ##
 q()

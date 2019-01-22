@@ -10,7 +10,6 @@
 
 
 
-#rep = 5
 seed(rep)
 condition = "numTips"
 exact_num_tips = 200
@@ -42,19 +41,8 @@ sse ~ dnCDBDP(rootAge           = 4.0,
               simulateCondition = condition,
               exactNumLineages  = exact_num_tips)
 
-# write simulated tree/tip states
-#tip_states = sse.getCharData()
-#output_f = output_dir + "/" + rep
-#write(sse, filename=output_f + ".tree")
-#writeCharacterDataDelimited(tip_states, filename=output_f + ".tsv", delimiter="\t")
-
 # write true net diversification rates
 true_rates <- sse.averageSpeciationRate() - sse.averageExtinctionRate()
-#write(rep, true_rates, "\n", 
-#      filename=output_dir + "true_div_rates.csv", 
-#      separator=",", 
-#      append=TRUE)
-
 
 
 # run MCMC over the simulated dataset

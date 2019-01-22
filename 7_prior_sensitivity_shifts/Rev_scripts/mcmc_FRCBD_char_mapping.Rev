@@ -46,16 +46,12 @@ rate_sd ~ dnExponential( 1.0 / H )
 moves[++mvi] = mvScale(rate_sd, lambda=1, tune=true, weight=2.0)
 
 ### Create a lognormal distributed variable for the mean speciation rate
-#speciation_mean ~ dnLognormal( ln(rate_mean), rate_sd)
-#speciation_mean ~ dnLoguniform( 1E-6, 1E2)
-speciation_mean ~ dnUniform( 0.0, 100 )
+speciation_mean ~ dnLoguniform( 1E-6, 1E2)
 speciation_mean.setValue( rate_mean )
 moves[++mvi] = mvScale(speciation_mean, lambda=1, tune=true, weight=2.0)
 
 ### Create a lognormal distributed variable for the mean extinction rate
-#extinction_mean ~ dnLognormal( ln(rate_mean/2.0), rate_sd)
-#extinction_mean ~ dnLoguniform( 1E-6, 1E2)
-extinction_mean ~ dnUniform( 0.0, 100 )
+extinction_mean ~ dnLoguniform( 1E-6, 1E2)
 extinction_mean.setValue( rate_mean / 2.0 )
 moves[++mvi] = mvScale(extinction_mean, lambda=1, tune=true, weight=2.0)
 
@@ -82,7 +78,6 @@ timetree ~ dnCDBDP( rootAge           = root,
                     pi                = rate_cat_probs,
                     rho               = rho,
                     condition         = "time" )
-#                    nTimeSlices       = 1000,
                     
 ### clamp the model with the "observed" tree
 timetree.clamp(observed_phylogeny)

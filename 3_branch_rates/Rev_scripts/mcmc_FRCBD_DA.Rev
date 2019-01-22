@@ -100,7 +100,6 @@ monitors[++mni] = mnScreen(printgen=1000, event_rate, root_category, total_num_e
 
 ### workspace mcmc
 mymcmc = mcmc(mymodel, monitors, moves, nruns=20, combine="mixed")
-#mymcmc = mcmcmc(mymodel, monitors, moves, nchains=20, swapInterval=1, nruns=1, combine="mixed")
 
 ### run the MCMC
 mymcmc.run(generations=4000, tuningInterval=200)

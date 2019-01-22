@@ -27,11 +27,7 @@ do
         echo "#!/bin/bash" > ${bash_script_name}
         echo "" >> ${bash_script_name}
         
-#        if [[ $script_name == "FRCBD_DA" ]] ; then
-            echo "mpirun -n 20 rb-mpi ${Rev_script_name}" >> ${bash_script_name}
-#        else
-#            echo "rb ${Rev_script_name}" >> ${bash_script_name}
-#        fi
+        echo "rb ${Rev_script_name}" >> ${bash_script_name}
         
         chmod +x ${bash_script_name}
         

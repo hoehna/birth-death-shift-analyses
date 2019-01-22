@@ -45,23 +45,18 @@ layout_mat = matrix(1:(length(EXPECTED_NUM_EVENTS)-1), nrow=1)
 #layout_mat = matrix(1:2, nrow=1)
 range      = range(pretty(unlist(branch_lambdas)))
 
-#pch = 19
 pch = 4
 cex = 0.5
-#cex = 1.0
 f   = 1.5
 col = colors[2]
 m   = 4
 
 
-#pdf(paste0("../figures/branch_rate_sensitivity_num_shifts_",DATASET,"_sequence.pdf"), height=3.5, width=7.5)
 pdf(paste0("../figures/branch_rate_sensitivity_num_shifts_",DATASET,"_sequence.pdf"), height=2.75, width=2.4 * (length(EXPECTED_NUM_EVENTS)-1))
 
 layout(layout_mat)
 
-# par(mar=c(4,4,0.2,0.1))
 
-#par(mar=c(0,0,0,m), oma=c(m,m,0.2,0))
 par(mar=c(0,0,0,m), oma=c(m,m,m,0))
 
 for(i in 1:(length(EXPECTED_NUM_EVENTS)-1)) {
@@ -74,20 +69,6 @@ for(i in 1:(length(EXPECTED_NUM_EVENTS)-1)) {
   mtext(side=1, text="branch-specific speciation rate", line=2.5, cex=0.7)
 
 }
-
-#plot(branch_lambdas[[1]], branch_lambdas[[2]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
-#abline(a=0, b=1, lty=2)
-#axis(1, lwd.tick=1, lwd=0)
-#mtext(side=2, text="E(S) = 10", line=1.2)
-#mtext(side=1, text="E(S) = 1",  line=2.5)
-
-#plot(branch_lambdas[[2]], branch_lambdas[[3]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
-#abline(a=0, b=1, lty=2)
-#axis(1, lwd.tick=1, lwd=0)
-#axis(4, lwd.tick=1, lwd=0, las=1)
-#mtext(side=2, text="E(S) = 100", line=1.2)
-#mtext(side=1, text="E(S) = 10",  line=2.5)
-
 
 axis(4, lwd.tick=1, lwd=0)
 mtext(side=4, text="branch-specific speciation rate",  line=2.5, cex=0.7)

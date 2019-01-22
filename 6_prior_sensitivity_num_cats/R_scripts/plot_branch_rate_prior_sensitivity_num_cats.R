@@ -43,12 +43,10 @@ for(i in 1:length(NUM_RATE_CATEGORIES)) {
 layout_mat = matrix(1:(length(NUM_RATE_CATEGORIES)-1), nrow=1)
 range      = range(pretty(unlist(branch_lambdas)))
 
-#pch = 19
+# = 19
 pch = 4
 cex = 0.5
-#cex = 1
 f   = 1.5
-#f   = 1
 col = colors[2]
 m   = 4
 
@@ -62,7 +60,6 @@ for(i in 1:(length(NUM_RATE_CATEGORIES)-1)) {
 
   plot(branch_lambdas[[i+1]], branch_lambdas[[i]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
   abline(a=0, b=1, lty=2)
-#  points(branch_lambdas[[i+1]], branch_lambdas[[i]], pch=pch, cex=cex, col=col)
   axis(1, lwd.tick=1, lwd=0)
   mtext(side=2, text=paste0("k = ",NUM_RATE_CATEGORIES[i]),    line=1.2)
   mtext(side=3, text=paste0("k = ",NUM_RATE_CATEGORIES[i+1]),  line=1.2)

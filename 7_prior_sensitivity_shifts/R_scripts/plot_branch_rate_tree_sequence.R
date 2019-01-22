@@ -53,12 +53,8 @@ if ( class(tree) == "try-error"  ) {
 }
 map = matchNodes(tree)
 
-#as.treedata.phylo(tree)
-#read.beast(paste0("../data/",DATASET,".tre"))
-
 # compute the intervals
 lambda_intervals = pretty(unlist(branch_lambdas), n=1001)
-# lambda_colors = viridis(length(lambda_intervals))
 
 tree_tbl = as_data_frame(tree)
 
@@ -92,7 +88,6 @@ for(i in 1:length(EXPECTED_NUM_EVENTS)) {
   
   if (i == 1) {
     plots[[i]] = ggtree(this_tree, aes(color=rates)) + scale_color_continuous("branch-specific speciation rate", low="blue", high="orange", limits=range(lambda_intervals)) + theme(legend.position=c(0.4,0.85), legend.background=element_blank()) + ggtitle(paste0("E(S) = ",EXPECTED_NUM_EVENTS[i])) + theme(plot.title = element_text(lineheight=.8, face="bold", hjust = 0.5))
-    # ggtree(this_tree, aes(color=rates)) + scale_color_continuous("branch-specific speciation rate", low="blue", high="orange", limits=range(lambda_intervals)) + theme(legend.position=c(0.2,0.8), legend.background=element_blank()) + ggtitle(paste0("E(S) = ",EXPECTED_NUM_EVENTS[i])) + theme(plot.title = element_text(lineheight=.8, face="bold", hjust = 0.5))
   } else {
     plots[[i]] = ggtree(this_tree, aes(color=rates)) + scale_color_continuous("branch-specific speciation rate", low="blue", high="orange", limits=range(lambda_intervals)) + ggtitle(paste0("E(S) = ",EXPECTED_NUM_EVENTS[i])) + theme(plot.title = element_text(lineheight=.8, face="bold", hjust = 0.5))
   }

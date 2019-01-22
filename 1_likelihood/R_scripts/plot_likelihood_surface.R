@@ -18,7 +18,6 @@ points(x_vals[seq(1, length(x_vals), space)], y=likelihoods$DA[seq(1, length(x_v
 points(x_vals[seq(1 + 0.5 * space, length(x_vals), space)], y=likelihoods$SCM[seq(1 + 0.5 * space, length(x_vals), space)], pch=pch[2], col=colors[2], cex=cex)
 axis(1, lwd.tick=1, lwd=0)
 axis(2, lwd.tick=1, lwd=0, las=2)
-#xlab=, ylab="", 
 mtext(side=2, text="log likelihood",  line=4.0, cex=1.4)
 mtext(side=1, text="relative extinction",  line=2.5, cex=1.4)
 legend("topleft", legend=c("analytical","data-augmentation","numerical integration"), bty="n", lty=c(1,NA,NA), pch=c(NA, pch[1], pch[2]), col=c("grey90",colors[1], colors[2]), lwd=c(lwd,1,1))

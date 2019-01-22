@@ -10,24 +10,7 @@
 
 setOption("useScaling","TRUE")
 
-DATASETS = ["adelpha",
-            "byttneria",
-            "cetaceans",
-            "conifers",
-            "ericaceae",
-            "graphidaceae",
-            "nymphalidae",
-            "paphiopedilum",
-            "parmeliaceae",
-            "pleopeltis",
-            "polygoneae",
-            "primates",
-            "senna",
-            "terebinthaceae",
-            "turnera",
-            "viburnum"]
-
-#DATASETS = [ "primates" ]
+DATASETS = [ "primates" ]
 
 NUM_RATE_CATEGORIES = 4
 
@@ -96,7 +79,6 @@ for(DATASET in DATASETS) {
                         pi                = rate_cat_probs,
                         rho               = rho,
                         condition         = "time")
-#                        nTimeSlices       = 5000,
 
     ### clamp the model with the "observed" tree
     timetree_BDP.clamp(observed_phylogeny)

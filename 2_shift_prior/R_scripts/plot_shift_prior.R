@@ -79,7 +79,7 @@ nums = xlim[1]:xlim[2]
 pdf(paste0("../figures/num_shifts.pdf"), height=5)
 par(mar=c(5,5,3,5))
 
-plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="number of events", ylab="probability")
+plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="number of shifts", ylab="probability")
 
 for(i in 1:length(EXPECTED_NUM_EVENTS)) {
 
