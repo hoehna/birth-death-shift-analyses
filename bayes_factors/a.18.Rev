@@ -1,0 +1,1 @@
+ALPHA               = 10000.0     # Simplex value, to change prior on modelREP                 = 18          # Replicate numbersource("bf_ave.Rev")
