@@ -2,7 +2,7 @@
 
 Here, you can find the Rev scripts used in the study
 
-    S. Höhna, W A. Freyman, Z. Nolen, J. P. Huelsenbeck, M. R. May, B. Rannala, 
+    Höhna, S., W A. Freyman, Z. Nolen, J. P. Huelsenbeck, M. R. May, B. Rannala, 
        and B. R. Moore. Submitted. A general approach for inferring branch-
        specific rates of lineage diversification. PNAS.
 
