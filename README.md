@@ -1,4 +1,4 @@
-# birth-death-shift-analyses
+# birth-death-shift analyses
 
 Here, you can find the Rev scripts used in the study
 
