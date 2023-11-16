@@ -1,0 +1,150 @@
+################################################################################
+#
+# Simulating a tree under birth-death-shift process.
+# Then perform MCMC on the simulated tree and calculate the posterior relative
+# error in the branch-specific net diversification rate estimate.
+#
+# authors: Will Freyman and Sebastian Hoehna
+#
+################################################################################
+
+
+H = 0.587405
+output_dir = "simulated_data/"
+
+condition = "tree"        # "startTime"|"numTips"|"tipStates"|"tree"
+EXPECTED_NUM_TIPS = 17
+MAX_SIM_LINEAGES = 10000
+TREE_AGE = 71.3547
+
+# simulate dataset
+sim_relative_mu <- 0.75
+sim_lambda_mean <-  ln(EXPECTED_NUM_TIPS/2.0) / TREE_AGE / (1-sim_relative_mu)
+sim_lambda_sd <- H*2.0
+
+sim_lambda_mean <- 0.05
+#sim_lambda_sd   <- 0.38
+sim_lambda := fnDiscretizeDistribution( dnLognormal(ln(sim_lambda_mean), sim_lambda_sd), NUM_RATE_CATEGORIES )
+
+sim_mu_mean := sim_relative_mu * sim_lambda_mean
+sim_mu_sd <- H*0.5*2
+
+sim_mu := fnDiscretizeDistribution( dnLognormal(ln(sim_mu_mean), sim_mu_sd), NUM_RATE_CATEGORIES )
+#sim_mu := rep( sim_mu_mean, NUM_RATE_CATEGORIES )
+
+k = 1
+for (i in 1:NUM_RATE_CATEGORIES) {
+    for (j in 1:NUM_RATE_CATEGORIES) {
+        speciation[k]   := sim_lambda[i]
+        extinction[k++] := sim_mu[j]
+    }
+}
+
+sim_event_rt <- sim_lambda_mean * 0.025
+sim_event_rt <- 0.0025
+
+# empirical values
+#sim_lambda_mean <- 0.43
+#sim_lambda_sd   <- 0.38
+#sim_mu_mean <- 0.6
+#sim_mu_sd   <- 1.3
+#sim_event_rt <- 0.01
+
+#root_category_prior <- simplex( rep(1, NUM_RATE_CATEGORIES*NUM_RATE_CATEGORIES) )
+for (i in 1:(NUM_RATE_CATEGORIES*NUM_RATE_CATEGORIES)) {
+    root_probs[i] <- 0.0
+}
+for (i in 1:NUM_RATE_CATEGORIES) {
+    root_probs[NUM_RATE_CATEGORIES+i] <- 1.0
+    root_probs[2*NUM_RATE_CATEGORIES+i] <- 1.0
+}
+root_category_prior <- simplex( root_probs )
+
+write(sim_lambda, "\n", sim_mu, "\n", sim_event_rt, "\n",
+     filename=output_dir + "params_"+rep+".csv",
+     separator="",
+     append=!TRUE)
+
+TREE_GOOD = FALSE
+while ( TREE_GOOD == FALSE ) {
+
+  sim_sse ~ dnBirthDeathShift(rootAge           = TREE_AGE,
+                speciationRates   = speciation,
+                extinctionRates   = extinction,
+                Q                 = fnJC(NUM_RATE_CATEGORIES*NUM_RATE_CATEGORIES),
+                delta             = sim_event_rt,
+                pi                = root_category_prior,
+                simulateCondition = condition,
+                pruneExtinctLineages= TRUE,
+                exactNumLineages  = EXPECTED_NUM_TIPS,
+                maxNumLineages    = MAX_SIM_LINEAGES)
+
+  "simulated " + sim_sse.ntips() + " tips."
+  TREE_GOOD = (sim_sse.ntips() > 20 && sim_sse.ntips() < 10000)
+}
+#while( sim_sse.ntips() < 20 || sim_sse.ntips() > 1000 ) {
+   "simulated " + sim_sse.ntips() + " tips."
+#   sim_sse.redraw()
+#}
+
+
+# write simulated tree/tip states
+write(sim_sse, filename=output_dir + "sim_" + rep + ".tree")
+
+# write true net diversification rates
+true_net_div_rates <- sim_sse.averageSpeciationRate() - sim_sse.averageExtinctionRate()
+n_rates = true_net_div_rates.size()
+tmp = "" + true_net_div_rates
+write(tmp.substr(2,tmp.size()-1),
+      filename=output_dir + "true_div_rates_"+rep+".csv",
+      separator="",
+      append=FALSE)
+write("\n",
+      filename=output_dir + "true_div_rates_"+rep+".csv",
+      separator="",
+      append=TRUE)
+
+
+
+true_spec_rates <- sim_sse.averageSpeciationRate()
+tmp = "" + true_spec_rates
+write(tmp.substr(2,tmp.size()-1),
+      filename=output_dir + "true_spec_rates_"+rep+".csv",
+      separator="",
+      append=FALSE)
+write("\n",
+      filename=output_dir + "true_spec_rates_"+rep+".csv",
+      separator="",
+      append=TRUE)
+
+
+
+true_ext_rates <- sim_sse.averageExtinctionRate()
+tmp = "" + true_ext_rates
+write(tmp.substr(2,tmp.size()-1),
+      filename=output_dir + "true_ext_rates_"+rep+".csv",
+      separator="",
+      append=FALSE)
+write("\n",
+      filename=output_dir + "true_ext_rates_"+rep+".csv",
+      separator="",
+      append=TRUE)
+
+
+
+true_n_events <- sim_sse.numberEvents()
+tmp = "" + true_n_events
+write(tmp.substr(2,tmp.size()-1),
+      filename=output_dir + "true_n_events_"+rep+".csv",
+      separator="",
+      append=FALSE)
+write("\n",
+      filename=output_dir + "true_n_events_"+rep+".csv",
+      separator="",
+      append=TRUE)
+
+
+write(sim_lambda_mean, ",", sim_lambda_sd, ",", sim_mu_mean, ",", sim_mu_sd, ",", sim_event_rt, "\n",
+     filename=output_dir + "priors_"+rep+".csv",
+     separator="",
+     append=!TRUE)

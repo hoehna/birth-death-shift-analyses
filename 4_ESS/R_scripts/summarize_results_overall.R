@@ -1,5 +1,3 @@
-# setwd("~/repos/revbayes_birth-death-shift/analysis/ess_tests/")
-
 library(ape)
 library(parallel)
 library(coda)
@@ -7,13 +5,8 @@ library(viridis)
 
 colors = viridis(3, begin=0.3, end=0.9)[c(2,1)]
 
-burnin = 0.25
+burnin = 0.20
 
-######################
-# read the job table #
-######################
-
-# job_table = read.table("src/job_table.tsv", header=TRUE, sep="\t", stringsAsFactors=FALSE, check.names=FALSE)
 
 #####################
 # make the analyses #
@@ -68,9 +61,6 @@ if ( file.exists( "ESS_summary.Rda" ) == FALSE ) {
 
 summary = do.call(rbind,mclapply(1:nrow(grid), function(x) {
 
-   # setTxtProgressBar(bar, i / nrow(grid))
-   # i <<- i + 1
-
    # get the variables
 
    row = grid[x,]
@@ -82,17 +72,17 @@ summary = do.call(rbind,mclapply(1:nrow(grid), function(x) {
    E = as.numeric(row["EXPECTED_NUM_EVENTS"])
    I = row["INT_METHOD"]
 
-  if ( I == "data_augmentation" ) {
+   if ( I == "data_augmentation" ) {
 
-    file_name       = paste0("output/",D,"_FRCBD_",N,"_",E,".log")
-    sceen_log_file  = paste0("screen_log/",D,"_FRCBD_",N,"_",E,".out")
+     file_name       = paste0("output/",D,"_BDS_DA_",N,"_",E,".log")
+     sceen_log_file  = paste0("screen_log/",D,"_BDS_DA_",N,"_",E,".out")
 
-  } else {
+   } else {
 
-    file_name       = paste0("output/",D,"_FRCBD_stoch_char_map_",N,"_",E,".log")
-    sceen_log_file  = paste0("screen_log/",D,"_FRCBD_char_mapping_",N,"_",E,".out")
+     file_name       = paste0("output/",D,"_BDS_SCM_",N,"_",E,".log")
+     sceen_log_file  = paste0("screen_log/",D,"_BDS_SCM_",N,"_",E,".out")
 
-  }
+   }
 
    if ( file.exists(file_name) == FALSE ) {
        cat("File not found!\t\t\t",file_name,"\n")
@@ -109,7 +99,7 @@ summary = do.call(rbind,mclapply(1:nrow(grid), function(x) {
        cat("File not found!\t\t\t",sceen_log_file,"\n")
        return(NULL)
    }
-   
+
    # # get the screen log
    screen_log      = readLines(sceen_log_file)
    screen_log_tail = tail(screen_log)
@@ -117,10 +107,11 @@ summary = do.call(rbind,mclapply(1:nrow(grid), function(x) {
 
    # determine if the run finished
    run_finished = any(grepl("Processing of file", screen_log_tail))
+   run_finished = FALSE
 
    # get the run time
    if ( run_finished == TRUE ) {
-     last_line = grep("10000", screen_log_tail, value=TRUE)
+     last_line = grep("100000", screen_log_tail, value=TRUE)
    } else {
      last_line = tail(screen_log_tail, 1)
    }
@@ -140,6 +131,7 @@ summary = do.call(rbind,mclapply(1:nrow(grid), function(x) {
 
    # remove branches that never change categories
    branch_rate_ess = branch_rate_ess[branch_rate_ess != 0]
+   branch_rate_ess = branch_rate_ess[is.finite(branch_rate_ess)]
 
    # compute the relevant ESS summaries
    min_ESS  = min(branch_rate_ess)
@@ -156,11 +148,11 @@ summary = do.call(rbind,mclapply(1:nrow(grid), function(x) {
                     run_finished        = run_finished,
                     stringsAsFactors    = FALSE)
 
-   return(res)
+    return(res)
 
- }, mc.cores=4, mc.preschedule=FALSE))
+  }, mc.cores=8, mc.preschedule=FALSE))
 
-save(summary, file="ESS_summary.Rda")
+  save(summary, file="ESS_summary.Rda")
 
 } else {
 
@@ -183,15 +175,16 @@ rescaled_min  = numeric(nrow(summary))
 rescaled_mean = numeric(nrow(summary))
 
 for(i in 1:nrow(summary)) {
-  
+
   N = summary[i,]$NUM_RATE_CATEGORIES
   E = summary[i,]$EXPECTED_NUM_EVENTS
-  
+
+#  const = mean(summary[summary$EXPECTED_NUM_EVENTS == E & summary$NUM_RATE_CATEGORIES == N & summary$DATASET == DATASET & summary$INT_METHOD == "data_augmentation",]$mean_ESS_per_second)
   const = mean(summary[summary$EXPECTED_NUM_EVENTS == E & summary$NUM_RATE_CATEGORIES == N & summary$DATASET == DATASET & summary$INT_METHOD == "data_augmentation",]$min_ESS_per_second)
 
   rescaled_min[i]  = summary[i,]$min_ESS_per_second / const
   rescaled_mean[i] = summary[i,]$mean_ESS_per_second / const
-  
+
 }
 
 summary$min_ESS_per_second  = rescaled_min
@@ -205,6 +198,7 @@ summary$mean_ESS_per_second = rescaled_mean
 
 range = range(pretty(c(summary$min_ESS_per_second, summary$mean_ESS_per_second)))
 range = range(pretty(c(summary$min_ESS_per_second)))
+
 
 # plot the ESS per second as a function of the number of discrete rate categories
 
@@ -319,10 +313,21 @@ dataset_mean_ess_numerical_integration = dataset_mean_ess_numerical_integration[
 # plot everything together #
 ############################
 
+
+#cat("Min:\t",num_cats_min_ess_data_augmentation,"\n")
+#cat("Min:\t",event_rate_min_ess_data_augmentation,"\n")
+cat("Min(NI):\t",dataset_min_ess_numerical_integration,"\n")
+cat("Min(DA):\t",dataset_min_ess_data_augmentation,"\n")
+cat("Mean(NI):\t",dataset_mean_ess_numerical_integration,"\n")
+cat("Mean(DA):\t",dataset_mean_ess_data_augmentation,"\n")
+
 dataset_min_ess_numerical_integration = dataset_min_ess_numerical_integration/dataset_min_ess_data_augmentation
 dataset_min_ess_data_augmentation     = dataset_min_ess_data_augmentation/dataset_min_ess_data_augmentation
 
-range = c(0,max(dataset_min_ess_numerical_integration,num_cats_min_ess_numerical_integration,event_rate_min_ess_numerical_integration))
+dataset_mean_ess_numerical_integration = dataset_mean_ess_numerical_integration/dataset_mean_ess_data_augmentation
+dataset_mean_ess_data_augmentation     = dataset_mean_ess_data_augmentation/dataset_mean_ess_data_augmentation
+
+range = c(0.9,max(dataset_min_ess_numerical_integration,num_cats_min_ess_numerical_integration,event_rate_min_ess_numerical_integration))
 
 DATASET             = c("byttneria", "conifers", "primates", "ericaceae", "viburnum", "cetaceans")
 EXPECTED_NUM_EVENTS = c(1,10,20)
@@ -336,9 +341,9 @@ pdf("../figures/ESS_comparison.pdf", height=3.5, width=8)
 
 par(mfrow=c(1,3), mar=c(7,0,0.2,0.5), oma=c(0,5,3,0))
 
-plot(NUM_RATE_CATEGORIES, NUM_RATE_CATEGORIES, type="n", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=range, log="")
+plot(NUM_RATE_CATEGORIES, NUM_RATE_CATEGORIES, type="n", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=range, log="y")
 
-points(NUM_RATE_CATEGORIES, num_cats_min_ess_data_augmentation,     pch=pch_DA)
+#points(NUM_RATE_CATEGORIES, num_cats_min_ess_data_augmentation,     pch=pch_DA)
 points(NUM_RATE_CATEGORIES, num_cats_min_ess_numerical_integration, pch=pch_NI)
 
 axis(1, lwd.ticks=1, lwd=0)
@@ -348,24 +353,22 @@ mtext(side=3, text="primates, E(S) = 10", line=1, cex=0.8)
 mtext(side=2, text="ESS (numerical integration) / ESS (data augmentation)", line=3, cex=0.7)
 
 
-plot(EXPECTED_NUM_EVENTS, EXPECTED_NUM_EVENTS, type="n", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=range)
+plot(EXPECTED_NUM_EVENTS, EXPECTED_NUM_EVENTS, type="n", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=range, log="y")
 
-points(EXPECTED_NUM_EVENTS, event_rate_min_ess_data_augmentation,    pch=pch_DA)
+#points(EXPECTED_NUM_EVENTS, event_rate_min_ess_data_augmentation,    pch=pch_DA)
 points(EXPECTED_NUM_EVENTS, event_rate_min_ess_numerical_integration, pch=pch_NI)
 
 axis(1, at=EXPECTED_NUM_EVENTS, lwd.ticks=1, lwd=0)
 mtext(side=1, text="E(S)", line=3, cex=0.8)
 mtext(side=3, text="primates, N = 4", line=1, cex=0.8)
 
-plot(1:length(DATASET), 1:length(DATASET), type="n", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=range, log="")
+plot(1:length(DATASET), 1:length(DATASET), type="n", xlab=NA, ylab=NA, xaxt="n", yaxt="n", ylim=range, log="y")
 
-points(1:length(DATASET), dataset_min_ess_data_augmentation,     pch=pch_DA)
-points(1:length(DATASET), dataset_min_ess_numerical_integration/dataset_min_ess_data_augmentation, pch=pch_NI)
+#points(1:length(DATASET), dataset_min_ess_data_augmentation,     pch=pch_DA)
+points(1:length(DATASET), dataset_mean_ess_numerical_integration, pch=pch_NI)
 
 axis(1, at=1:length(n_taxa), labels=paste0(names(n_taxa),"\n(", n_taxa,")"), lwd.ticks=1, lwd=0, las=2)
 mtext(side=3, text="E(S) = 10, N = 4", line=1, cex=0.8)
 mtext(side=1, text="dataset", line=5.5, adj=0.5, cex=0.8)
 
 dev.off()
-
-

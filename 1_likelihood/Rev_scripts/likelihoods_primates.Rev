@@ -10,95 +10,90 @@
 
 setOption("useScaling","TRUE")
 
-DATASETS = [ "primates" ]
+
+DATASET = "primates"
 
 NUM_RATE_CATEGORIES = 4
 
-for(DATASET in DATASETS) {
 
-    DATASET
+#######################
+# Reading in the Data #
+#######################
 
-    #######################
-    # Reading in the Data #
-    #######################
+# Read in the observed phylogeny
+observed_phylogeny <- readTrees("../data/" + DATASET + ".tre")[1]
 
-    # Read in the observed phylogeny
-    observed_phylogeny <- readTrees("../data/" + DATASET + ".tre")[1]
-    
-    # Get the names of the taxa in the tree and the age of the tree. We need these later on.
-    taxa <- observed_phylogeny.taxa()
-    root <- observed_phylogeny.rootAge()
-    tree_length <- observed_phylogeny.treeLength()
+# Get the names of the taxa in the tree and the age of the tree. We need these later on.
+taxa <- observed_phylogeny.taxa()
+root <- observed_phylogeny.rootAge()
+tree_length <- observed_phylogeny.treeLength()
 
-    # set my move index
-    mvi = 0
-    mni = 0
 
-    # Global parameters for our analysis
-    EXPECTED_NUM_EVENTS = 2
-    NUM_TOTAL_SPECIES = taxa.size()
-    H = 0.587405
+# Global parameters for our analysis
+EXPECTED_NUM_EVENTS = 2
+NUM_TOTAL_SPECIES = taxa.size()
+H = 0.587405
 
-    ####################
-    # Create the rates #
-    ####################
+####################
+# Create the rates #
+####################
 
-    ### Specify a prior on the speciation and extinction rates
+### Specify a prior on the speciation and extinction rates
 
-    ### Create a lognormal distributed variable for the mean speciation rate
-    rate_prior_mean <- 2.0 * (NUM_TOTAL_SPECIES-2) / tree_length
-    rate_prior_mean <- (NUM_TOTAL_SPECIES-2) / tree_length
-    speciation_mean <- rate_prior_mean
-    extinction_mean <- speciation_mean / 2.0
-    speciation := rep(speciation_mean, NUM_RATE_CATEGORIES)
-    extinction := rep(extinction_mean, NUM_RATE_CATEGORIES)
+### Create a lognormal distributed variable for the mean speciation rate
+rate_prior_mean <- 2.0 * (NUM_TOTAL_SPECIES-2) / tree_length
+rate_prior_mean <- (NUM_TOTAL_SPECIES-2) / tree_length
+speciation_mean <- rate_prior_mean
+extinction_mean <- speciation_mean / 2.0
+speciation := rep(speciation_mean, NUM_RATE_CATEGORIES)
+extinction := rep(extinction_mean, NUM_RATE_CATEGORIES)
 
-    ### We need to specify the root category
-    ### However, all categories are the same, so it doesn't matter
-    root_category <- 1
+### We need to specify the root category
+### However, all categories are the same, so it doesn't matter
+root_category <- 1
 
-    ### Create uniform probabilities for the category at the root
-    rate_cat_probs <- simplex( rep(1, NUM_RATE_CATEGORIES) )
+### Create uniform probabilities for the category at the root
+rate_cat_probs <- simplex( rep(1, NUM_RATE_CATEGORIES) )
 
-    ### Set the rate of rate-shift events to 0.0
-    event_rate <- 0.0
+### Set the rate of rate-shift events to 0.0
+shift_rate <- 0.0
 
-    ### rho is the probability of sampling species at the present
-    ### fix this to 367/367, since there are ~367 described species of primates
-    ### and we have sampled 367
-    rho <- Probability(observed_phylogeny.ntips() / NUM_TOTAL_SPECIES)
+### rho is the probability of sampling species at the present
+### fix this to 367/367, since there are ~367 described species of primates
+### and we have sampled 367
+rho <- Probability(observed_phylogeny.ntips() / NUM_TOTAL_SPECIES)
 
-    #### construct a variable for the tree drawn from a birth death process
-    timetree_BDP ~ dnBDP(lambda=speciation_mean, mu=extinction_mean, rootAge=root, rho=rho, taxa=taxa, condition="time" )
-    timetree_FRCBDSP_DA ~ dnHBDP(lambda=speciation, mu=extinction, rootAge=root, rho=rho, rootState=root_category, delta=event_rate, taxa=taxa, condition="time", allowSameCategory=FALSE )
-    timetree_FRCBDSP_SCM ~ dnCDBDP( rootAge           = root,
-                        speciationRates   = speciation,
-                        extinctionRates   = extinction,
-                        Q                 = fnJC(NUM_RATE_CATEGORIES),
-                        delta             = event_rate,
-                        pi                = rate_cat_probs,
-                        rho               = rho,
-                        condition         = "time")
+#### construct a variable for the tree drawn from a birth death process
+timetree_BDP ~ dnBDP(lambda=speciation_mean, mu=extinction_mean, rootAge=root, rho=rho, taxa=taxa, condition="survival" )
+timetree_BDSP_DA  ~ dnHBDP(lambda=speciation, mu=extinction, rootAge=root, rho=rho, rootState=root_category, delta=shift_rate, taxa=taxa, condition="survival", allowSameCategory=FALSE )
+timetree_BDSP_SCM ~ dnCDBDP( rootAge           = root,
+                             speciationRates   = speciation,
+                             extinctionRates   = extinction,
+                             Q                 = fnJC(NUM_RATE_CATEGORIES),
+                             delta             = shift_rate,
+                             pi                = rate_cat_probs,
+                             rho               = rho,
+                             condition         = "survival")
 
-    ### clamp the model with the "observed" tree
-    timetree_BDP.clamp(observed_phylogeny)
-    timetree_FRCBDSP_DA.clamp(observed_phylogeny)
-    timetree_FRCBDSP_SCM.clamp(observed_phylogeny)
+### clamp the model with the "observed" tree
+timetree_BDP.clamp(observed_phylogeny)
+timetree_BDSP_DA.clamp(observed_phylogeny)
+timetree_BDSP_SCM.clamp(observed_phylogeny)
 
-    write(file="likelihoods/" + DATASET + ".csv","Rel-Ext","BDP","DA","SCM\n",append=FALSE)
-    MAX = 1000
-    for ( i in 0:MAX ) {
+write(file="likelihoods/" + DATASET + ".csv","Rel-Ext","BDP","DA","SCM\n",append=FALSE)
+MAX = 1000
+for ( i in 0:MAX ) {
 
-      extinction_mean <- i / MAX * speciation_mean
+  i
 
-      a = timetree_BDP.lnProbability()
-      b = timetree_FRCBDSP_DA.lnProbability()
-      c = timetree_FRCBDSP_SCM.lnProbability()
+  extinction_mean <- i / MAX * speciation_mean
 
-      write(file="likelihoods/" + DATASET + ".csv",i / MAX,a,b,c,append=TRUE)
-      write(file="likelihoods/" + DATASET + ".csv","\n",append=TRUE)
+  a = timetree_BDP.lnProbability()
+  b = timetree_BDSP_DA.lnProbability()
+  c = timetree_BDSP_SCM.lnProbability()
 
-    }
+  write(file="likelihoods/" + DATASET + ".csv",i / MAX,a,b,c,append=TRUE)
+  write(file="likelihoods/" + DATASET + ".csv","\n",append=TRUE)
 
 }
 

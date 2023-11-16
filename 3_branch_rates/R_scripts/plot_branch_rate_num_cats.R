@@ -3,8 +3,7 @@
 ##################################################################
 
 # the settings
-DATASET             = c("primates")
-NUM_RATE_CATEGORIES = c(2, 4, 6, 8, 10)
+DATASET             = "primates"
 NUM_RATE_CATEGORIES = c(4, 6, 8, 10, 20)
 EXPECTED_NUM_EVENTS = 10
 
@@ -18,28 +17,28 @@ for(i in 1:length(NUM_RATE_CATEGORIES)) {
 
   cat(N,"\t")
 
-  file = paste0("output/",DATASET,"_FRCBD_stoch_char_map_",N,".log")
+  file = paste0("output/",DATASET,"_BDS_SCM_",N,".log")
   samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
 
-  # discard some burnin (25%)
-  burnin = 0.25
+  # discard some burnin (20%)
+  burnin = 0.20
   n_samples = nrow(samples)
-  
+
   # combine the mcmc output
   lambda_output   = samples[-c(1:ceiling(n_samples * burnin)),grepl("avg_lambda", colnames(samples))]
 
   # store the parameters
   lambda_mean = colMeans(lambda_output)
   branch_lambdas_scm[[i]] = lambda_mean[-length(lambda_mean)]
-  
 
-  file = paste0("output/",DATASET,"_FRCBD_",N,".log")
+
+  file = paste0("output/",DATASET,"_BDS_DA_",N,".log")
   samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
 
-  # discard some burnin (25%)
-  burnin = 0.25
+  # discard some burnin (20%)
+  burnin = 0.20
   n_samples = nrow(samples)
-  
+
   # combine the mcmc output
   lambda_output   = samples[-c(1:ceiling(n_samples * burnin)),grepl("avg_lambda", colnames(samples))]
 
@@ -56,13 +55,9 @@ for(i in 1:length(NUM_RATE_CATEGORIES)) {
 layout_mat = matrix(1:length(NUM_RATE_CATEGORIES), nrow=1)
 range      = range(pretty(unlist(branch_lambdas_scm)))
 
-#pch = 19
 pch = 4
 cex = 0.5
-#cex = 1
 f   = 1.5
-#f   = 1
-#col = colors[2]
 m   = 4
 
 pdf(paste0("../figures/branch_rate_num_categories_sequence.pdf"), height=2.75, width=2.4 * length(NUM_RATE_CATEGORIES))
@@ -74,7 +69,6 @@ for(i in 1:length(NUM_RATE_CATEGORIES)) {
 
     plot(branch_lambdas_scm[[i]], branch_lambdas_da[[i]], xlim=range, ylim=range, pch=pch, cex=cex * f, xaxt="n", yaxt="n", xlab=NA, ylab=NA)
     abline(a=0, b=1, lty=2)
-#    points(branch_lambdas[[i+1]], branch_lambdas[[i]], pch=pch, cex=cex, col=col)
     axis(1, lwd.tick=1, lwd=0)
     mtext(side=3, text=paste0("k = ",NUM_RATE_CATEGORIES[i]),    line=1.2)
     mtext(side=1, text="branch-specific speciation rate", line=2.5, cex=0.7)
@@ -88,9 +82,3 @@ for(i in 1:length(NUM_RATE_CATEGORIES)) {
 
 
 dev.off()
-
-
-
-
-
-

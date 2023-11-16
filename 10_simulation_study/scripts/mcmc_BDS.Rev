@@ -1,0 +1,194 @@
+################################################################################
+#
+# RevBayes Example: Bayesian inference of diversification rates under a
+#                   branch-specific birth-death model
+#
+#
+# authors: Sebastian Hoehna
+#
+################################################################################
+
+
+if ( RATES == "both_var" ) {
+    NUM_RATES = NUM_RATE_CATEGORIES * NUM_RATE_CATEGORIES
+} else {
+    NUM_RATES = NUM_RATE_CATEGORIES
+}
+
+#######################
+# Reading in the Data #
+#######################
+
+# Read in the observed phylogeny
+observed_phylogeny <- readTrees(DATA_DIR + "/" + DATASET + ".tree")[1]
+
+# Get the names of the taxa in the tree and the age of the tree. We need these later on.
+taxa <- observed_phylogeny.taxa()
+root <- observed_phylogeny.rootAge()
+tree_length <- observed_phylogeny.treeLength()
+
+moves     = VectorMoves()
+monitors  = VectorMonitors()
+
+# Global parameters for our analysis
+NUM_TOTAL_SPECIES = taxa.size()
+H = 0.587405
+
+####################
+# Create the rates #
+####################
+
+### rho is the probability of sampling species at the present
+### fix this to 367/367, since there are ~367 described species of primates
+### and we have sampled 367
+rho <- observed_phylogeny.ntips() / NUM_TOTAL_SPECIES
+
+### Specify a prior on the speciation and extinction rates
+rate_mean <- (NUM_TOTAL_SPECIES-2) / tree_length
+
+if ( PRIORS == "uniform" ) {
+    speciation_sd ~ dnUniform( 0, 10*H )
+    speciation_mean ~ dnUniform( 0, 1E2)
+    extinction_mean ~ dnUniform( 0, 1E2)
+    shift_rate ~ dnUniform(0, 100.0/tree_length)
+    if ( RATES == "both_var" ) {
+        extinction_sd ~ dnUniform( 0, 10*H )
+    }
+} else if ( PRIORS == "loguniform" ) {
+    speciation_sd ~ dnLoguniform( 1E-6, 10*H )
+    speciation_mean ~ dnUniform( 0, 1E2)
+    extinction_mean ~ dnUniform( 0, 1E2)
+    shift_rate ~ dnUniform(0, 100.0/tree_length)
+    if ( RATES == "both_var" ) {
+        extinction_sd ~ dnLoguniform( 1E-6, 10*H )
+    }
+} else if ( PRIORS == "exponential" ) {
+    speciation_sd ~ dnExponential( 1.0 / H )
+    speciation_mean ~ dnUniform( 0, 1E2)
+    extinction_mean ~ dnUniform( 0, 1E2)
+    shift_rate ~ dnUniform(0, 100.0/tree_length)
+    if ( RATES == "both_var" ) {
+        extinction_sd ~ dnExponential( 1.0 / H )
+    }
+}
+
+### Create an AVMVN move on all rates
+avmvn_rates = mvAVMVN(weight=20, waitBeforeLearning=round(NUM_MCMC_ITERATIONS/100.0), maxUpdates=round(NUM_MCMC_ITERATIONS/5.0), waitBeforeUsing=round(NUM_MCMC_ITERATIONS/20.0))
+
+speciation_sd.setValue( H / 10 )
+moves.append( mvScale(speciation_sd, lambda=0.05, tune=true, weight=2.0) )
+avmvn_rates.addVariable( speciation_sd )
+
+if ( RATES == "both_var" ) {
+    extinction_sd.setValue( H / 10 )
+    moves.append( mvScale(extinction_sd, lambda=0.05, tune=true, weight=2.0) )
+    avmvn_rates.addVariable( extinction_sd )
+}
+
+### Create a lognormal distributed variable for the mean speciation rate
+speciation_mean.setValue( 0.2 )
+moves.append( mvScale(speciation_mean, lambda=rate_mean*0.2, tune=true, weight=2.0) )
+avmvn_rates.addVariable( speciation_mean )
+
+## Jointly moves mean and sd of speciation rate as they are somewhat correlated
+up_down_move = mvUpDownScale(lambda=0.01,weight=2.0)
+up_down_move.addVariable(speciation_mean,TRUE)
+up_down_move.addVariable(speciation_sd,FALSE)
+moves.append( up_down_move )
+
+### Create a lognormal distributed variable for the mean extinction rate
+extinction_mean.setValue( speciation_mean * 0.08 )
+moves.append( mvScale(extinction_mean, lambda=0.001, tune=true, weight=2.0) )
+avmvn_rates.addVariable( extinction_mean )
+
+
+## Jointly moves mean of speciation and extinction rate as they are some what correlated
+up_down_move = mvUpDownScale(lambda=0.001,weight=2.0)
+up_down_move.addVariable(speciation_mean,TRUE)
+up_down_move.addVariable(extinction_mean,TRUE)
+moves.append(  up_down_move )
+
+if ( RATES == "const_extinction" ) {
+
+    ### Create a deterministic variable for the speciation rate categories
+    ### using a discretized lognormal distribution (the N-quantiles of it)
+    speciation := fnDiscretizeDistribution( dnLognormal(ln(speciation_mean), speciation_sd), NUM_RATE_CATEGORIES )
+
+    ### Create a deterministic variable for the speciation rate categories
+    ### Assume that all extinction rates are equal
+    extinction := rep(extinction_mean, NUM_RATE_CATEGORIES)
+
+} else if ( RATES == "both_var" ) {
+
+    ### Create a deterministic variable for the speciation rate categories
+    ### using a discretized lognormal distribution (the N-quantiles of it)
+    speciation_cats := fnDiscretizeDistribution( dnLognormal(ln(speciation_mean), speciation_sd), NUM_RATE_CATEGORIES )
+
+    ### Create a deterministic variable for the extinction rate categories
+    ### using a discretized lognormal distribution (the N-quantiles of it)
+    extinction_cats := fnDiscretizeDistribution( dnLognormal(ln(extinction_mean), extinction_sd), NUM_RATE_CATEGORIES )
+
+    k = 1
+    for (i in 1:NUM_RATE_CATEGORIES) {
+        for (j in 1:NUM_RATE_CATEGORIES) {
+            speciation[k]   := speciation_cats[i]
+            extinction[k++] := extinction_cats[j]
+        }
+    }
+
+}
+
+
+### Create a exponential distributed variable for the rate of rate-shift events
+shift_rate.setValue( 2.0/tree_length )
+moves.append( mvScale(shift_rate, lambda=1, tune=true, weight=2.0) )
+avmvn_rates.addVariable( shift_rate )
+
+
+#moves.append( avmvn_rates )
+
+### Create a uniformly distributed variable for the category at the root
+rate_cat_probs <- simplex( rep(1, NUM_RATES) )
+
+#### construct a variable for the tree drawn from a birth death process
+timetree ~ dnCDBDP( rootAge           = root,
+                    speciationRates   = speciation,
+                    extinctionRates   = extinction,
+                    Q                 = fnJC(NUM_RATES),
+                    delta             = shift_rate,
+                    pi                = rate_cat_probs,
+                    rho               = rho,
+                    condition         = "survival" )
+#                    nTimeSlices       = 1000,
+
+### clamp the model with the "observed" tree
+timetree.clamp(observed_phylogeny)
+
+
+#############
+# The Model #
+#############
+
+### workspace model wrapper ###
+mymodel = model(speciation)
+
+### set up the monitors that will output parameter values to file and screen
+monitors.append( mnScreen(printgen=10, shift_rate, speciation_mean, speciation_sd) )
+monitors.append( mnStochasticBranchRate(cdbdp=timetree, printgen=1, filename=OUTPUT_DIR + "/BDS_" + DATASET + "_rates_num_cats_" + NUM_RATE_CATEGORIES + ".log") )
+monitors.append( mnModel(filename=OUTPUT_DIR + "/BDS_" + DATASET + "_" + NUM_RATE_CATEGORIES + ".log",printgen=1, separator = TAB) )
+
+
+################
+# The Analysis #
+################
+
+### workspace mcmc
+mymcmc = mcmc(mymodel, monitors, moves, nruns=N_RUNS, combine="mixed")
+
+### run the MCMC
+mymcmc.run(generations=NUM_MCMC_ITERATIONS, tuningInterval=100)
+
+mymcmc.operatorSummary()
+
+## quit ##
+q()

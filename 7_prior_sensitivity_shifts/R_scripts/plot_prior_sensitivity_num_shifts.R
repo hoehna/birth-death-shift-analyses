@@ -26,13 +26,13 @@ for(i in 1:length(EXPECTED_NUM_EVENTS)) {
 
   cat(E,"\t")
 
-  file = paste0("output/",DATASET,"_FRCBD_rates_num_cats_",NUM_RATE_CATEGORIES,"_num_events_",E,".log")
+  file = paste0("output/",DATASET,"_BDS_SCM_rates_num_cats_",NUM_RATE_CATEGORIES,"_num_events_",E,".log")
   samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
 
-  # discard some burnin (25%)
-  burnin = 0.25
+  # discard some burnin (20%)
+  burnin = 0.20
   n_samples = nrow(samples)
-  
+
   samples = samples[-c(1:ceiling(n_samples * burnin)),grepl("num_shifts", colnames(samples))]
   num_events = rowSums(samples)
 
@@ -72,15 +72,12 @@ for(j in 1:length(EXPECTED_NUM_EVENTS)) {
 # the priors
 for(j in 1:length(EXPECTED_NUM_EVENTS)) {
   prior = EXPECTED_NUM_EVENTS[j]
-  cat(prior)
-  cat("\n")
   lines(all_values, dpois(x_range[1]:x_range[2], prior, log=FALSE), type="s", pch=19, col=colors[j], lty=1, lwd=2)
 }
 
 axis(1)
 mtext("number of shifts", side=1, line=2.5)
 mtext("probability", side=2, line=2.5)
-
 
 legend("topright", legend=EXPECTED_NUM_EVENTS, title="E(S)", lty=1, col=colors, bty="n")
 
@@ -90,4 +87,3 @@ axis(1, lwd.tick=1, lwd=0)
 axis(2, lwd.tick=1, lwd=0)
 
 dev.off()
-

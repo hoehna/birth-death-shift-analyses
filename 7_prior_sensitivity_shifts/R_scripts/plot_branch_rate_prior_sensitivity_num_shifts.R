@@ -21,11 +21,11 @@ for(i in 1:length(EXPECTED_NUM_EVENTS)) {
 
   cat(E,"\t")
 
-  file = paste0("output/",DATASET,"_FRCBD_rates_num_cats_",NUM_RATE_CATEGORIES,"_num_events_",E,".log")
+  file = paste0("output/",DATASET,"_BDS_SCM_rates_num_cats_",NUM_RATE_CATEGORIES,"_num_events_",E,".log")
   samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
 
-  # discard some burnin (25%)
-  burnin = 0.25
+  # discard some burnin (20%)
+  burnin = 0.20
   n_samples = nrow(samples)
   # combine the mcmc output
   lambda_output   = samples[-c(1:ceiling(n_samples * burnin)),grepl("avg_lambda", colnames(samples))]
@@ -56,7 +56,6 @@ pdf(paste0("../figures/branch_rate_sensitivity_num_shifts_",DATASET,"_sequence.p
 
 layout(layout_mat)
 
-
 par(mar=c(0,0,0,m), oma=c(m,m,m,0))
 
 for(i in 1:(length(EXPECTED_NUM_EVENTS)-1)) {
@@ -70,9 +69,9 @@ for(i in 1:(length(EXPECTED_NUM_EVENTS)-1)) {
 
 }
 
+
 axis(4, lwd.tick=1, lwd=0)
 mtext(side=4, text="branch-specific speciation rate",  line=2.5, cex=0.7)
 
 
 dev.off()
-

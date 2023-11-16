@@ -1,4 +1,8 @@
+library(RColorBrewer)
 #library(viridis)
+
+
+args <- commandArgs(TRUE)
 
 burnin = 0.25
 
@@ -6,31 +10,35 @@ burnin = 0.25
 H = 0.587405
 TL = 1597.287
 DATASET             = c("primates")
-NUM_RATE_CATEGORIES = 10
-EXPECTED_NUM_EVENTS = 10
+NUM_RATE_CATEGORIES = as.numeric(args[1])
+NUM_REPS            = 4
+
+colors_rep  <- brewer.pal(n=NUM_REPS,name="Set1")[1:(NUM_REPS+0)]
 
 
-file = paste0("output/",DATASET,"_FRCBD_stoch_char_map_",NUM_RATE_CATEGORIES,"_num_events_",EXPECTED_NUM_EVENTS,".log")
-#file = paste0("output/",DATASET,"_FRCBD_stoch_char_map_",NUM_RATE_CATEGORIES,"_num_events_",EXPECTED_NUM_EVENTS,"_run_1.log")
-cat(file,"\n")
+speciation    = list()
+extinction    = list()
+speciation_sd = list()
+extinction_sd = list()
+shift_rate    = list()
 
-samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
+for ( rep in 1:NUM_REPS) {
 
-# discard the burnin
-samples = samples[-c(1: ceiling(burnin * nrow(samples))),]
+    file = paste0("output/",DATASET,"_BDS_SCM_",NUM_RATE_CATEGORIES,"_run_",rep,".log")
 
-speciation = samples$`speciation_mean`
-extinction = samples$`extinction_mean`
-speciation_sd = samples$`rate_sd`
-shift_rate = samples$`event_rate`
+    samples = read.table(file, sep="\t", stringsAsFactors=FALSE, check.names=FALSE, header=TRUE)
 
+    # discard the burnin
+    samples = samples[-c(1: ceiling(burnin * nrow(samples))),]
 
+    speciation[[rep]]    = samples$`speciation_mean`
+    extinction[[rep]]    = samples$`extinction_mean`
+    speciation_sd[[rep]] = samples$`speciation_sd`
+    extinction_sd[[rep]] = samples$`extinction_sd`
+    shift_rate[[rep]]    = samples$`shift_rate`
 
-cat("#Samples:\t\t\t",length(speciation),"\n")
-cat("E[speciation]:\t\t\t",355/TL,"\n")
-cat("Mean speciation:\t\t",mean(speciation),"\n")
-cat("SD speciation:\t\t\t",mean(speciation_sd),"\n")
-cat("E[S]:\t\t\t\t",mean(shift_rate)*TL,"\n")
+}
+
 
 
 
@@ -38,111 +46,30 @@ cat("E[S]:\t\t\t\t",mean(shift_rate)*TL,"\n")
 # all together #
 ################
 
-# speciation rate
-speciation_density = density(speciation)
-
-ylim = c(0, tail(pretty(max(speciation_density$y)), 1))
-#ylim = c(0, tail(pretty(max(prior_density$y)), 1))
-xlim = range(pretty(speciation_density$x))
-xlim = c(1E-6,1.2)
-
-pdf("../figures/hyperprior_mean.pdf", height=5)
-par(mar=c(5,5,3,5), lend=2)
-
-plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="mean speciation rate", ylab="probability density")
-#plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", log="x", yaxt="n", bty="n", xlab="mean speciation rate", ylab="probability density")
-
-lines(speciation_density, col="black", lwd=4)
-curve(dunif(x,0,100), col="grey90", lty=2, lwd=4, add=TRUE)
-
-box()
-axis(1, lwd.tick=1, lwd=0)
-axis(2, lwd.tick=1, lwd=0, las=1)
-
-#legend("topleft", legend=c("constant-rate BDP","data augmentation","numerical integration"), lty=c(1,NA,NA), lwd=c(4,NA,NA), pch=c(NA,pch_DA,pch_NI), bty="n", col=c("grey90",1,1))
-#legend("topright", legend=EXPECTED_NUM_EVENTS, title="E(S)", fill=colors, bty="n", border=NA)
-legend("topright", legend=c("posterior","prior"), lty=c(1,2), lwd=c(4,4), bty="n", col=c("black","grey90"))
-
-dev.off()
 
 
-
-
-
-
-# sd speciation rate
-sd_density = density(speciation_sd)
-
-ylim = c(0, tail(pretty(max(sd_density$y)), 1))
-xlim = c(1E-10,4*H)
-
-pdf("../figures/hyperprior_sd.pdf", height=5)
-par(mar=c(5,5,3,5), lend=2)
-
-plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="standard deviation speciation rate", ylab="probability density")
-
-lines(sd_density, col="black", lwd=4)
-curve(dexp(x,1.0/H), col="grey90", lty=2, lwd=4, add=TRUE)
-
-box()
-axis(1, lwd.tick=1, lwd=0)
-axis(2, lwd.tick=1, lwd=0, las=1)
-
-legend("topright", legend=c("posterior","prior"), lty=c(1,2), lwd=c(4,4), bty="n", col=c("black","grey90"))
-
-dev.off()
-
-
-
-
-
-
-# sd speciation rate
-shift_rate_density = density(shift_rate)
-
-ylim = c(0, tail(pretty(max(shift_rate_density$y)), 1))
-#ylim = c(0, tail(pretty(max(prior_density$y)), 1))
-#xlim = range(pretty(prior_density$x))
-xlim = c(1E-10,100/TL)
-
-pdf("../figures/hyperprior_shift_rate.pdf", height=5)
-par(mar=c(5,5,3,5), lend=2)
-
-plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="E(S)", ylab="probability density")
-
-lines(shift_rate_density, col="black", lwd=4)
-curve(dunif(x,0,100/TL), col="grey90", lty=2, lwd=4, add=TRUE)
-
-box()
-axis(1, lwd.tick=1, lwd=0, at=seq(0,100,by=10)/TL, labels=seq(0,100,by=10))
-axis(2, lwd.tick=1, lwd=0, las=1)
-
-legend("topright", legend=c("posterior","prior"), lty=c(1,2), lwd=c(4,4), bty="n", col=c("black","grey90"))
-
-dev.off()
-
-
-
-
-
-
-
-pdf("../figures/hyperprior.pdf", height=2.75, width=3.25 * 3)
-layout_mat = matrix(1:3, nrow=1)
+pdf(paste0("figures/hyperprior_",NUM_RATE_CATEGORIES,".pdf"), height=2.75, width=3.25 * 5)
+layout_mat = matrix(1:5, nrow=1)
 layout(layout_mat)
 
-#par(mar=c(5,5,3,5), lend=2)
 m = 4
-par(mar=c(m,m,0,m), oma=c(0.5,0.5,0.5,0))
+par(mar=c(m,m,0,1), oma=c(0.5,0.5,0.5,0))
 
-ylim = c(0, tail(pretty(max(speciation_density$y)), 1))
+
+y_max = 0
+for (rep in 1:NUM_REPS) {
+    speciation_mean_density   = density(speciation[[rep]])
+    y_max = max(y_max, tail(pretty(max(speciation_mean_density$y)), 1))
+}
+ylim = c(0, y_max)
 xlim = c(1E-6,1.2)
-
-
 
 plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="mean speciation rate", ylab="probability density")
 
-lines(speciation_density, col="black", lwd=4)
+for (rep in 1:NUM_REPS) {
+    speciation_mean_density   = density(speciation[[rep]])
+	lines(speciation_mean_density, col=colors_rep[rep], lwd=4)
+}
 curve(dunif(x,0,100), col="grey90", lty=2, lwd=4, add=TRUE)
 
 box()
@@ -152,34 +79,93 @@ axis(2, lwd.tick=1, lwd=0, las=1)
 
 
 
-ylim = c(0, tail(pretty(max(sd_density$y)), 1))
+y_max = 0
+for (rep in 1:NUM_REPS) {
+    speciation_sd_density   = density(speciation_sd[[rep]])
+    y_max = max(y_max, tail(pretty(max(speciation_sd_density$y)), 1))
+}
+ylim = c(0, y_max)
 xlim = c(1E-10,4*H)
+
 plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="standard deviation speciation rate", ylab="probability density")
 
-lines(sd_density, col="black", lwd=4)
+for (rep in 1:NUM_REPS) {
+    speciation_sd_density   = density(speciation_sd[[rep]])
+	lines(speciation_sd_density, col=colors_rep[rep], lwd=4)
+}
 curve(dexp(x,1.0/H), col="grey90", lty=2, lwd=4, add=TRUE)
 
 box()
 axis(1, lwd.tick=1, lwd=0)
 axis(2, lwd.tick=1, lwd=0, las=1)
 
-#legend("topright", legend=c("posterior","prior"), lty=c(1,2), lwd=c(4,4), bty="n", col=c("black","grey90"))
 
 
 
-ylim = c(0, tail(pretty(max(shift_rate_density$y)), 1))
+y_max = 0
+for (rep in 1:NUM_REPS) {
+    extinction_mean_density   = density(extinction[[rep]])
+    y_max = max(y_max, tail(pretty(max(extinction_mean_density$y)), 1))
+}
+ylim = c(0, y_max)
+xlim = c(1E-6,2.5)
+
+plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="mean extinction rate", ylab="probability density")
+
+for (rep in 1:NUM_REPS) {
+    extinction_mean_density   = density(extinction[[rep]])
+	lines(extinction_mean_density, col=colors_rep[rep], lwd=4)
+}
+curve(dunif(x,0,100), col="grey90", lty=2, lwd=4, add=TRUE)
+
+box()
+axis(1, lwd.tick=1, lwd=0)
+axis(2, lwd.tick=1, lwd=0, las=1)
+
+
+
+
+y_max = 0
+for (rep in 1:NUM_REPS) {
+    extinction_sd_density   = density(extinction_sd[[rep]])
+    y_max = max(y_max, tail(pretty(max(extinction_sd_density$y)), 1))
+}
+ylim = c(0, y_max)
+xlim = c(1E-10,8*H)
+
+plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="standard deviation extinction rate", ylab="probability density")
+
+for (rep in 1:NUM_REPS) {
+    extinction_sd_density   = density(extinction_sd[[rep]])
+	lines(extinction_sd_density, col=colors_rep[rep], lwd=4)
+}
+curve(dexp(x,1.0/H), col="grey90", lty=2, lwd=4, add=TRUE)
+
+box()
+axis(1, lwd.tick=1, lwd=0)
+axis(2, lwd.tick=1, lwd=0, las=1)
+
+
+
+y_max = 0
+for (rep in 1:NUM_REPS) {
+    shift_rate_density   = density(shift_rate[[rep]])
+    y_max = max(y_max, tail(pretty(max(shift_rate_density$y)), 1))
+}
+ylim = c(0, y_max)
 xlim = c(1E-10,100/TL)
 plot(0, ylim=ylim, xlim=xlim, type="n", xaxt="n", yaxt="n", bty="n", xlab="E(S)", ylab="probability density")
 
-lines(shift_rate_density, col="black", lwd=4)
+for (rep in 1:NUM_REPS) {
+    shift_rate_density   = density(shift_rate[[rep]])
+	lines(shift_rate_density, col=colors_rep[rep], lwd=4)
+}
 curve(dunif(x,0,100/TL), col="grey90", lty=2, lwd=4, add=TRUE)
 
 box()
 axis(1, lwd.tick=1, lwd=0, at=seq(0,100,by=10)/TL, labels=seq(0,100,by=10))
 axis(2, lwd.tick=1, lwd=0, las=1)
 
-legend("topright", legend=c("posterior","prior"), lty=c(1,2), lwd=c(4,4), bty="n", col=c("black","grey90"))
+legend("topright", legend=c(paste0("posterior rep ",1:NUM_REPS),"prior"), lty=c(rep(1,NUM_REPS),2), lwd=c(rep(4,NUM_REPS),4), bty="n", col=c(colors_rep,"grey90"))
 
 dev.off()
-
-
