@@ -4,7 +4,7 @@ Here, you can find the Rev scripts used in the study
 
     Höhna, S., W A. Freyman, Z. Nolen, J. P. Huelsenbeck, M. R. May, B. Rannala,
        and B. R. Moore. Submitted. A general approach for inferring branch-
-       specific rates of lineage diversification. PNAS.
+       specific rates of lineage diversification.
 
  1. Likelihood surface for primates analysis under different implementations.
  2. Prior and posterior distribution of the number of shifts when all categories are equal.
